@@ -2,15 +2,17 @@ provider "azurerm" {
   features {}
 }
 
+
 resource "azurerm_resource_group" "web" {
   name     = var.resource_group
   location = var.location
-  tags     = var.tags
+
+  tags = var.tags
 }
 
-# Provision Virtula Network
+
 resource "azurerm_virtual_network" "web" {
-  name                = "${var.prefix}VirtualNetwork"
+  name                = "${var.resource_name_prefix}VirtualNetwork"
   address_space       = ["10.0.0.0/16"]
   location            = azurerm_resource_group.web.location
   resource_group_name = azurerm_resource_group.web.name
@@ -18,17 +20,17 @@ resource "azurerm_virtual_network" "web" {
   tags = var.tags
 }
 
-# Provision Subnet
+
 resource "azurerm_subnet" "web" {
-  name                 = "${var.prefix}Subnet"
+  name                 = "${var.resource_name_prefix}Subnet"
   resource_group_name  = azurerm_resource_group.web.name
   virtual_network_name = azurerm_virtual_network.web.name
   address_prefixes     = ["10.0.2.0/24"]
 }
 
-# Provision Public IP
+
 resource "azurerm_public_ip" "web" {
-  name                = "${var.prefix}publicIPForLB"
+  name                = "${var.resource_name_prefix}publicIPForLB"
   location            = azurerm_resource_group.web.location
   resource_group_name = azurerm_resource_group.web.name
   allocation_method   = "Static"
@@ -36,9 +38,9 @@ resource "azurerm_public_ip" "web" {
   tags = var.tags
 }
 
-# Provision Load Balanacer
+
 resource "azurerm_lb" "web" {
-  name                = "${var.prefix}loadBalancer"
+  name                = "${var.resource_name_prefix}loadBalancer"
   location            = azurerm_resource_group.web.location
   resource_group_name = azurerm_resource_group.web.name
 
@@ -53,13 +55,13 @@ resource "azurerm_lb" "web" {
 resource "azurerm_lb_backend_address_pool" "web" {
   resource_group_name = azurerm_resource_group.web.name
   loadbalancer_id     = azurerm_lb.web.id
-  name                = "${var.prefix}BackEndAddressPool"
+  name                = "${var.resource_name_prefix}BackEndAddressPool"
 
 }
 
-# Provision Network Security Group
+
 resource "azurerm_network_security_group" "web" {
-  name                = "${var.prefix}NetworkSecurityGroup"
+  name                = "${var.resource_name_prefix}NetworkSecurityGroup"
   location            = azurerm_resource_group.web.location
   resource_group_name = azurerm_resource_group.web.name
 
@@ -88,13 +90,14 @@ resource "azurerm_network_security_group" "web" {
   }
 
 
+
   tags = var.tags
 }
 
-# Provision Network Interface Card 
+
 resource "azurerm_network_interface" "web" {
   count               = var.number_instance
-  name                = "${var.prefix}NIC_${count.index}"
+  name                = "${var.resource_name_prefix}NIC_${count.index}"
   location            = azurerm_resource_group.web.location
   resource_group_name = azurerm_resource_group.web.name
 
@@ -106,7 +109,7 @@ resource "azurerm_network_interface" "web" {
   tags = var.tags
 }
 
-# Associate  the security group to the network interface card
+
 resource "azurerm_network_interface_security_group_association" "web" {
   count                     = var.number_instance
   network_interface_id      = azurerm_network_interface.web[count.index].id
@@ -114,10 +117,10 @@ resource "azurerm_network_interface_security_group_association" "web" {
 
 }
 
-# Provision Mangaed Disk
+
 resource "azurerm_managed_disk" "web" {
   count                = var.number_instance
-  name                 = "${var.prefix}DataDiskExisting_${count.index}"
+  name                 = "${var.resource_name_prefix}DataDiskExisting_${count.index}"
   location             = azurerm_resource_group.web.location
   resource_group_name  = azurerm_resource_group.web.name
   storage_account_type = "Standard_LRS"
@@ -127,9 +130,9 @@ resource "azurerm_managed_disk" "web" {
   tags = var.tags
 }
 
-# Provision Availability Set
+
 resource "azurerm_availability_set" "avset" {
-  name                         = "${var.prefix}AvailabilitySet"
+  name                         = "${var.resource_name_prefix}AvailabilitySet"
   location                     = azurerm_resource_group.web.location
   resource_group_name          = azurerm_resource_group.web.name
   platform_fault_domain_count  = 2
@@ -139,31 +142,30 @@ resource "azurerm_availability_set" "avset" {
   tags = var.tags
 }
 
-# Packer Image Resource Group
+
 data "azurerm_resource_group" "image" {
-  name = "webResourceGroup"
+  name = "packer-rg"
 }
 
-# Packer Image
+
 data "azurerm_image" "image" {
-  name                = "webDeployWebServerPackerImage"
+  name                = "linux-packer-image"
   resource_group_name = data.azurerm_resource_group.image.name
 }
 
-# Provision Virtual Machine
+
 resource "azurerm_virtual_machine" "web" {
   count                 = var.number_instance
-  name                  = "${var.prefix}VirtualMachine_${count.index}"
+  name                  = "${var.resource_name_prefix}VirtualMachine_${count.index}"
   location              = azurerm_resource_group.web.location
   availability_set_id   = azurerm_availability_set.avset.id
   resource_group_name   = azurerm_resource_group.web.name
   network_interface_ids = [element(azurerm_network_interface.web.*.id, count.index)]
   vm_size               = "Standard_DS1_v2"
 
-  # Delete disk when deleting VM
+
   delete_os_disk_on_termination = true
 
-  # Delete data disk when deleting VM
   delete_data_disks_on_termination = true
 
 
@@ -172,15 +174,15 @@ resource "azurerm_virtual_machine" "web" {
   }
 
   storage_os_disk {
-    name              = "${var.prefix}OSDisk_${count.index}"
+    name              = "${var.resource_name_prefix}OSDisk_${count.index}"
     caching           = "ReadWrite"
     create_option     = "FromImage"
     managed_disk_type = "Standard_LRS"
   }
 
-  # Provision Optional Data Disks
+
   storage_data_disk {
-    name              = "${var.prefix}DataDiskNew_${count.index}"
+    name              = "${var.resource_name_prefix}DataDiskNew_${count.index}"
     managed_disk_type = "Standard_LRS"
     create_option     = "Empty"
     lun               = 0

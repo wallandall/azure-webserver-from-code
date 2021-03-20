@@ -1,19 +1,22 @@
 variable "prefix" {
+  type        = string
   description = "The prefix which should be used for all resources in this solution"
   default     = "linux-azure-webserver"
+}
+
+
+variable "resource_group" {
+  type        = string
+  description = "The name of the resource group in which the resources are created"
+  default     = "packer-rg"
 }
 
 variable "location" {
   type        = string
   description = "The location where resources are created"
-  default     = "Germany North"
+  default     = "germanywestcentral"
 }
 
-variable "resource_group" {
-  type        = string
-  description = "The name of the resource group in which the resources are created"
-  default     = "linux-web-server-rg"
-}
 
 variable "number_instance" {
   description = "The number of instance(s) that the vm scale sets would create"
@@ -38,15 +41,13 @@ variable "application_port" {
 variable "admin" {
   type        = string
   description = "Default username for admin"
+
 }
 
 variable "admin_password" {
   type        = string
   description = "Default password for admin"
+
 }
 
-variable "resource_name_prefix" {
-  type        = string
-  description = "Default resource name prefix - DWSA stands for Deploying a Web Server in Azure"
-  default     = "udacitynd_DWSA_"
-}
+
