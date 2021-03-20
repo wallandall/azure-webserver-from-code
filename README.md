@@ -24,7 +24,7 @@ This project demonstrates Packer and a Terraform templates to deploy a customiza
    1. `az policy definition create --name tagging-policy --display-name "Deny Resource Creation Without Tags" --description "This policy will deney the creation of resources without tags" --rules tagging-policy.json --params tagging-policy-params.json --mode Indexed `
    2. `az policy assignment create --name tagging-policy --display-name "Deny Resource Creation Without Tags" --description "This policy will deney the creation of resources without tags" --policy tagging-policy --params params.json ` 
 2. Create a resource group called packer-rg: 
-   1. ´az group create --location germanywestcentral --name packer-rg´
+   1. ` az group create --location germanywestcentral --name packer-rg `
    2. Ensure you replace the location with your location 
 3. Create a Service Principle.
    1. Run the following command:` az ad sp create-for-rbac --role="Contributor" --name="TerraformSP"`
@@ -53,7 +53,9 @@ This project demonstrates Packer and a Terraform templates to deploy a customiza
    2. Run:
       1. `terraform init` 
       2. `terraform plan -out solution.plan`
-      3. `terraform destroy`
+      3. `terraform apply solution.plan`
+   3. To destroy resources created by Terraform:  `terraform destroy`
+   4. To destroy resources created by Packer: `az image delete -g packer-rg -n linux-packer-image`
    
 
 
@@ -61,4 +63,9 @@ This project demonstrates Packer and a Terraform templates to deploy a customiza
 
 1. Output for Step 1 - Create an Azure Policy
    ![alt text](tagging-policy.png "Tagging Policy")
-2. Output for Step 2
+2. Output for Step 2 - Create Resource Group packer-rg
+   ![alt text](create-group-packer-rg.png "packer-rg")
+4. Output for Step 5 - Create a Packer Image
+   ![alt text](packer-build.png "packer build server.json")
+5. Output for Step 5 - Deploy to Azure
+  ![alt text](terraform-apply.png "terraform apply")
