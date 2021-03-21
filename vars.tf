@@ -23,6 +23,14 @@ variable "tags" {
   }
 }
 
+
+variable "username" {
+  description = "Enter username to associate with the machine"
+  type        = string
+}
+
+
+
 variable "password" {
   description = "Enter password to use to access the machine"
   type        = string
@@ -30,10 +38,6 @@ variable "password" {
 
 }
 
-variable "username" {
-  description = "Enter username to associate with the machine"
-  type        = string
-}
 
 
 

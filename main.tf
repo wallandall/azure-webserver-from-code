@@ -23,20 +23,6 @@ resource "azurerm_subnet" "main" {
   address_prefixes     = ["10.0.0.0/24"]
 }
 
-resource "azurerm_network_interface" "main" {
-  count               = var.num_of_vms
-  name                = "${var.prefix}-${count.index}-nic"
-  location            = var.location
-  resource_group_name = azurerm_resource_group.main.name
-
-  ip_configuration {
-    name                          = "mainConfiguration"
-    subnet_id                     = azurerm_subnet.main.id
-    private_ip_address_allocation = "Dynamic"
-  }
-  tags = var.tags
-}
-
 resource "azurerm_public_ip" "main" {
   name                = "${var.prefix}-public-ip"
   resource_group_name = azurerm_resource_group.main.name
@@ -65,6 +51,78 @@ resource "azurerm_lb_backend_address_pool" "main" {
 }
 
 
+resource "azurerm_network_security_group" "main" {
+  name                = "${var.prefix}NetworkSecurityGroup"
+  location            = azurerm_resource_group.main.location
+  resource_group_name = azurerm_resource_group.main.name
+
+  security_rule {
+    name                       = "AllowSSHInbound"
+    priority                   = 1001
+    direction                  = "Inbound"
+    access                     = "Allow"
+    protocol                   = "Tcp"
+    source_port_range          = "*"
+    destination_port_range     = "22"
+    source_address_prefix      = "*"
+    destination_address_prefix = "*"
+  }
+
+  security_rule {
+    name                       = "DenyInternetInbound"
+    priority                   = 1002
+    direction                  = "Inbound"
+    access                     = "Deny"
+    protocol                   = "Tcp"
+    source_port_range          = "*"
+    destination_port_range     = "*"
+    source_address_prefix      = "*"
+    destination_address_prefix = "*"
+  }
+
+
+  tags = var.tags
+}
+
+
+resource "azurerm_network_interface" "main" {
+  count               = var.num_of_vms
+  name                = "${var.prefix}-${count.index}-nic"
+  location            = var.location
+  resource_group_name = azurerm_resource_group.main.name
+
+  ip_configuration {
+    name                          = "mainConfiguration"
+    subnet_id                     = azurerm_subnet.main.id
+    private_ip_address_allocation = "Dynamic"
+  }
+  tags = var.tags
+}
+
+
+resource "azurerm_network_interface_security_group_association" "main" {
+  count                     = var.num_of_vms
+  network_interface_id      = azurerm_network_interface.main[count.index].id
+  network_security_group_id = azurerm_network_security_group.main.id
+
+}
+
+
+
+resource "azurerm_managed_disk" "main" {
+  count                = var.num_of_vms
+  name                 = "${var.prefix}DataDiskExisting_${count.index}"
+  location             = azurerm_resource_group.main.location
+  resource_group_name  = azurerm_resource_group.main.name
+  storage_account_type = "Standard_LRS"
+  create_option        = "Empty"
+  disk_size_gb         = "10"
+
+  tags = var.tags
+}
+
+
+
 resource "azurerm_availability_set" "availset" {
   name                         = "availset"
   location                     = azurerm_resource_group.main.location
@@ -85,36 +143,32 @@ data "azurerm_image" "image" {
 }
 
 
-resource "azurerm_virtual_machine" "main" {
-  count                 = var.num_of_vms
-  name                  = "${var.prefix}${count.index}-vm"
-  resource_group_name   = azurerm_resource_group.main.name
-  location              = azurerm_resource_group.main.location
-  vm_size               = "Standard_B1s"
-  network_interface_ids = [element(azurerm_network_interface.main.*.id, count.index)]
+resource "azurerm_linux_virtual_machine" "main" {
+  count                           = var.num_of_vms
+  name                            = "${var.prefix}${count.index}-vm"
+  resource_group_name             = azurerm_resource_group.main.name
+  location                        = azurerm_resource_group.main.location
+  availability_set_id             = azurerm_availability_set.availset.id
+  size                            = "Standard_B1s"
+  network_interface_ids           = [element(azurerm_network_interface.main.*.id, count.index)]
+  disable_password_authentication = false
+  admin_username                  = var.username
+  admin_password                  = var.password
 
-  storage_image_reference {
+  os_disk {
+    name                 = "WSdisk_${count.index}"
+    caching              = "ReadWrite"
+    storage_account_type = "Standard_LRS"
+  }
+
+  source_image_reference {
     publisher = "Canonical"
     offer     = "UbuntuServer"
     sku       = "18.04-LTS"
     version   = "latest"
   }
 
-  os_profile {
-    computer_name  = "hostname${count.index}"
-    admin_username = var.username
-    admin_password = var.password
-  }
 
-  os_profile_linux_config {
-    disable_password_authentication = false
-  }
 
-  storage_os_disk {
-    name              = "WSdisk${count.index}"
-    caching           = "ReadWrite"
-    create_option     = "FromImage"
-    managed_disk_type = "Standard_LRS"
-  }
   tags = var.tags
 }
