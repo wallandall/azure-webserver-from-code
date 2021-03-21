@@ -77,5 +77,5 @@ This solution uses Packer and Terraform to deploy a customisable and scalable We
    ![alt text](create-group-packer-rg.png "packer-rg")
 4. Output of creating the Packer Image
    ![alt text](packer-build.png "packer build server.json")
-5. Output for Step 5 - Deploy to Azure
+5. Output Terraform Apply
   ![alt text](terraform-apply.png "terraform apply")
